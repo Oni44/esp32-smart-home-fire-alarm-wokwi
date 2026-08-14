@@ -98,6 +98,17 @@ const unsigned long FIRE_LCD_MS       = 1000;
 const unsigned long FIRE_MUTE_MS      = 60000UL; // 1 menit, untuk uji coba
 const int FIRE_FAN_PWM                 = 255;     // Kipas maksimum selama alarm aktif
 
+// =====================================================
+// ADAPTIVE INTELLIGENCE SETTING
+// =====================================================
+const int ADAPTIVE_WINDOW_SIZE = 10;
+const int ADAPTIVE_MIN_SAMPLES = 5;
+const float ADAPTIVE_WARNING_DELTA = 4.0;
+const float ADAPTIVE_FIRE_DELTA    = 8.0;
+const float ADAPTIVE_CLEAR_HYSTERESIS = 2.0;
+// Dynamic fire threshold tidak boleh di bawah 30°C
+const float ADAPTIVE_MIN_FIRE_THRESHOLD = 30.0;
+
 // ========== OBJECT ==========
 DHT dht(DHTPIN, DHTTYPE);
 LiquidCrystal_I2C lcd(0x27, 16, 2);
@@ -106,6 +117,19 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 float humi = NAN;
 float temp = NAN;
 int MQ2_SENSOR_Value = HIGH;
+
+// =====================================================
+// ADAPTIVE INTELLIGENCE STATE
+// =====================================================
+float adaptiveTempHistory[ADAPTIVE_WINDOW_SIZE];
+int adaptiveTempIndex           = 0;
+int adaptiveTempCount           = 0;
+float adaptiveBaselineTemp      = NAN;
+float adaptiveWarningThreshold  = FIRE_TEMP_THRESHOLD - 2.0;
+float adaptiveFireThreshold     = FIRE_TEMP_THRESHOLD;
+float adaptiveClearThreshold    = FIRE_TEMP_CLEAR_THRESHOLD;
+enum AdaptiveRiskStatus {RISK_SAFE, RISK_WARNING, RISK_DANGER};
+AdaptiveRiskStatus adaptiveRiskStatus = RISK_SAFE;
 
 // ========== STATUS FLAG ==========
 bool fg = false;
@@ -307,6 +331,93 @@ bool isGasDetected() {
 
 bool isDoorOpen() {
   return (digitalRead(Magnet) == HIGH);
+}
+
+// =====================================================
+// ADAPTIVE INTELLIGENCE
+// =====================================================
+bool adaptiveModelReady() {
+  return adaptiveTempCount >= ADAPTIVE_MIN_SAMPLES;
+}
+
+const char* getAdaptiveRiskStatusText() {
+  switch (adaptiveRiskStatus) {
+    case RISK_WARNING:
+      return "WARNING";
+    case RISK_DANGER:
+      return "DANGER";
+    case RISK_SAFE:
+    default:
+      return "SAFE";
+  }
+}
+
+void calculateAdaptiveThresholds() {
+  if (adaptiveTempCount == 0) {
+    return;
+  }
+  float total = 0.0;
+  for (int i = 0; i < adaptiveTempCount; i++) {
+    total += adaptiveTempHistory[i];
+  }
+  adaptiveBaselineTemp = total / adaptiveTempCount;
+  adaptiveWarningThreshold = adaptiveBaselineTemp + ADAPTIVE_WARNING_DELTA;
+
+  adaptiveFireThreshold = adaptiveBaselineTemp +ADAPTIVE_FIRE_DELTA;
+
+  // Safety: jangan sampai dynamic threshold terlalu rendah.
+  if (adaptiveFireThreshold < ADAPTIVE_MIN_FIRE_THRESHOLD) {
+    adaptiveFireThreshold = ADAPTIVE_MIN_FIRE_THRESHOLD;
+  }
+
+  adaptiveClearThreshold = adaptiveFireThreshold - ADAPTIVE_CLEAR_HYSTERESIS;
+}
+
+void addAdaptiveTemperatureSample(float newTemperature) {
+  if (isnan(newTemperature)) {
+    return;
+  }
+  // Jangan belajar ketika kondisi kebakaran aktif
+  if (fireActive) {
+    return;
+  }
+  // Jangan belajar ketika gas/asap terdeteksi
+  if (isGasDetected()) {
+    return;
+  }
+  // Setelah model siap, jangan masukkan
+  // temperatur abnormal ke baseline.
+  if (adaptiveModelReady() && newTemperature >= adaptiveWarningThreshold) {
+    return;
+  }
+
+  adaptiveTempHistory[adaptiveTempIndex] = newTemperature;
+  adaptiveTempIndex++;
+
+  if (adaptiveTempIndex >= ADAPTIVE_WINDOW_SIZE) {
+    adaptiveTempIndex = 0;
+  }
+
+  if (adaptiveTempCount < ADAPTIVE_WINDOW_SIZE) {
+    adaptiveTempCount++;
+  }
+
+  calculateAdaptiveThresholds();
+
+  Serial.print("[ADAPTIVE] Samples=");
+  Serial.print(adaptiveTempCount);
+
+  Serial.print(" Baseline=");
+  Serial.print(adaptiveBaselineTemp, 1);
+
+  Serial.print(" Warning=");
+  Serial.print(adaptiveWarningThreshold, 1);
+
+  Serial.print(" Fire=");
+  Serial.print(adaptiveFireThreshold, 1);
+
+  Serial.print(" Clear=");
+  Serial.println(adaptiveClearThreshold, 1);
 }
 
 // Ringkasan status untuk pesan Telegram.
@@ -890,6 +1001,15 @@ void read_DHT22() {
 
   humi = h;
   temp = t;
+
+  // Update simulated ML / adaptive model
+  addAdaptiveTemperatureSample(temp);
+
+  Serial.print("[DHT] T=");
+  Serial.print(temp, 1);
+  Serial.print("C H=");
+  Serial.print(humi, 1);
+  Serial.println("%");
 }
 
 // =====================================================
@@ -989,13 +1109,43 @@ void unmuteFireAlarm() {
 }
 
 void updateFireAlarm() {
+
   bool gasDetected = isGasDetected();
   bool suhuValid = !isnan(temp);
-  bool suhuTinggi = suhuValid && temp >= FIRE_TEMP_THRESHOLD;
+
+  // ===================================================
+  // ACTIVE THRESHOLD
+  // ===================================================
+  float activeWarningThreshold = adaptiveModelReady() ? adaptiveWarningThreshold : FIRE_TEMP_THRESHOLD - 2.0;
+  float activeFireThreshold = adaptiveModelReady() ? adaptiveFireThreshold : FIRE_TEMP_THRESHOLD;
+  float activeClearThreshold = adaptiveModelReady() ? adaptiveClearThreshold : FIRE_TEMP_CLEAR_THRESHOLD;
+
+  // ===================================================
+  // TEMPERATURE CONDITION
+  // ===================================================
+  bool suhuWarning = suhuValid && temp >= activeWarningThreshold;
+  bool suhuTinggi = suhuValid && temp >= activeFireThreshold;
+  // Tetap hard-coded sebagai safety limit
   bool suhuKritis = suhuValid && temp >= FIRE_CRITICAL_TEMP;
 
+  // ===================================================
+  // FIRE CONDITION
+  // ===================================================
   bool fireCondition = (gasDetected && suhuTinggi) || suhuKritis;
-  bool clearCondition = !gasDetected && suhuValid && temp <= FIRE_TEMP_CLEAR_THRESHOLD;
+  bool clearCondition = !gasDetected && suhuValid && temp <= activeClearThreshold;
+
+  // ===================================================
+  // RISK CLASSIFICATION
+  // ===================================================
+  if (fireCondition) {
+    adaptiveRiskStatus = RISK_DANGER;
+  }
+  else if (gasDetected || suhuWarning) {
+    adaptiveRiskStatus = RISK_WARNING;
+  }
+  else {
+    adaptiveRiskStatus = RISK_SAFE;
+  }
 
   if (fireCondition && !fireActive) {
     fireActive = true;
@@ -1568,6 +1718,32 @@ bool publishTelemetry() {
 
   payload += ",\"fire_active\":";
   payload += fireActive ? "true" : "false";
+  // ===================================================
+  // ADAPTIVE INTELLIGENCE TELEMETRY
+  // ===================================================
+  payload += ",\"adaptive_ready\":";
+  payload += adaptiveModelReady() ? "true" : "false";
+
+  payload += ",\"adaptive_sample_count\":";
+  payload += String(adaptiveTempCount);
+
+  if (!isnan(adaptiveBaselineTemp)) {
+    payload += ",\"temp_baseline\":";
+    payload += String(adaptiveBaselineTemp, 1);
+  }
+
+  payload += ",\"temp_warning_threshold\":";
+  payload += String(adaptiveWarningThreshold, 1);
+
+  payload += ",\"temp_fire_threshold\":";
+  payload += String(adaptiveFireThreshold, 1);
+
+  payload += ",\"temp_clear_threshold\":";
+  payload += String(adaptiveClearThreshold, 1);
+
+  payload += ",\"risk_status\":\"";
+  payload += getAdaptiveRiskStatusText();
+  payload += "\"";
 
   payload += ",\"fire_muted\":";
   payload += fireMuted ? "true" : "false";
