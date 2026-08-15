@@ -3048,8 +3048,8 @@
                 "persistentPollingInterval": 5000
               },
               "getAttribute": {
-                "scope": null,
-                "key": "value"
+                "key": "value",
+                "scope": null
               },
               "getTimeSeries": {
                 "key": "value"
@@ -3060,6 +3060,7 @@
               },
               "dataToValue": {
                 "type": "NONE",
+                "compareToValue": true,
                 "dataToValueFunction": "/* Should return double value */\nreturn data;"
               }
             },
@@ -3072,16 +3073,16 @@
                 "persistentPollingInterval": 5000
               },
               "setAttribute": {
-                "key": "value",
-                "scope": "SERVER_SCOPE"
+                "scope": "SERVER_SCOPE",
+                "key": "value"
               },
               "putTimeSeries": {
                 "key": "value"
               },
               "valueToData": {
-                "type": "VALUE",
+                "type": "FUNCTION",
                 "constantValue": 0,
-                "valueToDataFunction": "/* Convert input double value to RPC parameters or attribute/time-series value */\nreturn value;"
+                "valueToDataFunction": "return {\n  \"token\": \"RPC_SECURITY_TOKEN\",\n  \"value\": Math.round(value)\n};"
               }
             },
             "minValue": 0,
@@ -3222,9 +3223,9 @@
                 "key": "state"
               },
               "valueToData": {
-                "type": "NONE",
+                "type": "FUNCTION",
                 "constantValue": true,
-                "valueToDataFunction": "/* Return RPC parameters or attribute/time-series value */\nreturn true;"
+                "valueToDataFunction": "return {\r\n  \"token\": \"RPC_SECURITY_TOKEN\",\r\n  \"value\": true\r\n};"
               }
             },
             "disabledState": {
@@ -3331,9 +3332,9 @@
                 "key": "state"
               },
               "valueToData": {
-                "type": "NONE",
+                "type": "FUNCTION",
                 "constantValue": true,
-                "valueToDataFunction": "/* Return RPC parameters or attribute/time-series value */\nreturn true;"
+                "valueToDataFunction": "return {\r\n  \"token\": \"RPC_SECURITY_TOKEN\",\r\n  \"value\": true\r\n};"
               }
             },
             "disabledState": {
@@ -3440,9 +3441,9 @@
                 "key": "state"
               },
               "valueToData": {
-                "type": "NONE",
+                "type": "FUNCTION",
                 "constantValue": true,
-                "valueToDataFunction": "/* Return RPC parameters or attribute/time-series value */\nreturn true;"
+                "valueToDataFunction": "return {\r\n  \"token\": \"RPC_SECURITY_TOKEN\",\r\n  \"value\": true\r\n};"
               }
             },
             "disabledState": {
@@ -3549,9 +3550,9 @@
                 "key": "state"
               },
               "valueToData": {
-                "type": "NONE",
+                "type": "FUNCTION",
                 "constantValue": true,
-                "valueToDataFunction": "/* Return RPC parameters or attribute/time-series value */\nreturn true;"
+                "valueToDataFunction": "return {\r\n  \"token\": \"RPC_SECURITY_TOKEN\",\r\n  \"value\": true\r\n};"
               }
             },
             "disabledState": {
@@ -3658,9 +3659,9 @@
                 "key": "state"
               },
               "valueToData": {
-                "type": "NONE",
+                "type": "FUNCTION",
                 "constantValue": true,
-                "valueToDataFunction": "/* Return RPC parameters or attribute/time-series value */\nreturn true;"
+                "valueToDataFunction": "return {\r\n  \"token\": \"RPC_SECURITY_TOKEN\",\r\n  \"value\": true\r\n};"
               }
             },
             "disabledState": {
@@ -3761,8 +3762,8 @@
                 "persistentPollingInterval": 1000
               },
               "getAttribute": {
-                "scope": null,
-                "key": "state"
+                "key": "state",
+                "scope": null
               },
               "getTimeSeries": {
                 "key": "lamp_blue_requested"
@@ -3773,8 +3774,8 @@
               },
               "dataToValue": {
                 "type": "FUNCTION",
-                "dataToValueFunction": "return data === true ||\r\n       data === \"true\" ||\r\n       data === 1 ||\r\n       data === \"1\";",
-                "compareToValue": true
+                "compareToValue": true,
+                "dataToValueFunction": "return data === true ||\r\n       data === \"true\" ||\r\n       data === 1 ||\r\n       data === \"1\";"
               }
             },
             "checkState": {
@@ -3793,9 +3794,9 @@
                 "key": "state"
               },
               "valueToData": {
-                "type": "CONSTANT",
+                "type": "FUNCTION",
                 "constantValue": true,
-                "valueToDataFunction": "/* Convert input boolean value to RPC parameters or attribute/time-series value */\nreturn value;"
+                "valueToDataFunction": "return {\r\n  \"token\": \"RPC_SECURITY_TOKEN\",\r\n  \"value\": true\r\n};"
               }
             },
             "uncheckState": {
@@ -3814,9 +3815,9 @@
                 "key": "state"
               },
               "valueToData": {
-                "type": "CONSTANT",
+                "type": "FUNCTION",
                 "constantValue": false,
-                "valueToDataFunction": "/* Convert input boolean value to RPC parameters or attribute/time-series value */ \n return value;"
+                "valueToDataFunction": "return {\r\n  \"token\": \"RPC_SECURITY_TOKEN\",\r\n  \"value\": false\r\n};"
               }
             },
             "disabledState": {
@@ -3844,6 +3845,7 @@
             "verticalFill": false,
             "checkedAppearance": {
               "type": "filled",
+              "autoScale": true,
               "showLabel": true,
               "label": "On",
               "showIcon": true,
@@ -3852,17 +3854,18 @@
               "iconSizeUnit": "px",
               "mainColor": "#0000FF",
               "backgroundColor": "#FFFFFF",
-              "borderRadius": "2px",
               "customStyle": {
                 "enabled": null,
                 "hovered": null,
                 "pressed": null,
                 "activated": null,
                 "disabled": null
-              }
+              },
+              "borderRadius": "2px"
             },
             "uncheckedAppearance": {
               "type": "outlined",
+              "autoScale": true,
               "showLabel": true,
               "label": "Off",
               "showIcon": true,
@@ -3871,14 +3874,14 @@
               "iconSizeUnit": "px",
               "mainColor": "#0000FF",
               "backgroundColor": "#FFFFFF",
-              "borderRadius": "2px",
               "customStyle": {
                 "enabled": null,
                 "hovered": null,
                 "pressed": null,
                 "activated": null,
                 "disabled": null
-              }
+              },
+              "borderRadius": "2px"
             },
             "background": {
               "type": "color",
@@ -3916,7 +3919,7 @@
           "titleIcon": "home",
           "iconColor": "rgba(0, 0, 0, 0.87)",
           "iconSize": "24px",
-          "configMode": "basic",
+          "configMode": "advanced",
           "targetDevice": {
             "type": "entity",
             "entityAliasId": "d97710f1-0e06-9449-7537-7ff127fff9df"
@@ -3982,9 +3985,9 @@
                 "key": "state"
               },
               "valueToData": {
-                "type": "CONSTANT",
+                "type": "FUNCTION",
                 "constantValue": true,
-                "valueToDataFunction": "/* Convert input boolean value to RPC parameters or attribute/time-series value */\nreturn value;"
+                "valueToDataFunction": "return {\r\n  \"token\": \"RPC_SECURITY_TOKEN\",\r\n  \"value\": true\r\n};"
               }
             },
             "uncheckState": {
@@ -4003,9 +4006,9 @@
                 "key": "state"
               },
               "valueToData": {
-                "type": "CONSTANT",
+                "type": "FUNCTION",
                 "constantValue": false,
-                "valueToDataFunction": "/* Convert input boolean value to RPC parameters or attribute/time-series value */ \n return value;"
+                "valueToDataFunction": "return {\r\n  \"token\": \"RPC_SECURITY_TOKEN\",\r\n  \"value\": false\r\n};"
               }
             },
             "disabledState": {
@@ -4164,16 +4167,16 @@
                 "persistentPollingInterval": 1000
               },
               "setAttribute": {
-                "key": "state",
-                "scope": "SERVER_SCOPE"
+                "scope": "SERVER_SCOPE",
+                "key": "state"
               },
               "putTimeSeries": {
                 "key": "state"
               },
               "valueToData": {
-                "type": "CONSTANT",
+                "type": "FUNCTION",
                 "constantValue": true,
-                "valueToDataFunction": "/* Convert input boolean value to RPC parameters or attribute/time-series value */\nreturn value;"
+                "valueToDataFunction": "return {\r\n  \"token\": \"RPC_SECURITY_TOKEN\",\r\n  \"value\": true\r\n};"
               }
             },
             "uncheckState": {
@@ -4185,16 +4188,16 @@
                 "persistentPollingInterval": 1000
               },
               "setAttribute": {
-                "key": "state",
-                "scope": "SERVER_SCOPE"
+                "scope": "SERVER_SCOPE",
+                "key": "state"
               },
               "putTimeSeries": {
                 "key": "state"
               },
               "valueToData": {
-                "type": "CONSTANT",
+                "type": "FUNCTION",
                 "constantValue": false,
-                "valueToDataFunction": "/* Convert input boolean value to RPC parameters or attribute/time-series value */ \n return value;"
+                "valueToDataFunction": "return {\r\n  \"token\": \"RPC_SECURITY_TOKEN\",\r\n  \"value\": false\r\n};"
               }
             },
             "disabledState": {
@@ -4242,6 +4245,7 @@
             },
             "uncheckedAppearance": {
               "type": "outlined",
+              "autoScale": true,
               "showLabel": true,
               "label": "Off",
               "showIcon": true,
@@ -4250,14 +4254,14 @@
               "iconSizeUnit": "px",
               "mainColor": "#FF0000",
               "backgroundColor": "#FFFFFF",
-              "borderRadius": "4px",
               "customStyle": {
                 "enabled": null,
                 "hovered": null,
                 "pressed": null,
                 "activated": null,
                 "disabled": null
-              }
+              },
+              "borderRadius": "4px"
             },
             "background": {
               "type": "color",
@@ -6523,6 +6527,723 @@
         "row": 0,
         "col": 0,
         "id": "34b7029f-bc0b-9ccb-9795-e6d085c8a78e"
+      },
+      "0e9f6d06-f1fd-a581-6314-16834a4e13ff": {
+        "typeFullFqn": "system.control_widgets.rpc_debug_terminal",
+        "type": "rpc",
+        "sizeX": 9.5,
+        "sizeY": 5.5,
+        "config": {
+          "targetDeviceAliases": [],
+          "showTitle": true,
+          "backgroundColor": "#010101",
+          "color": "rgba(255, 254, 254, 0.87)",
+          "padding": "0px",
+          "settings": {
+            "parseGpioStatusFunction": "return body[pin] === true;",
+            "gpioStatusChangeRequest": {
+              "method": "setGpioStatus",
+              "paramsBody": "{\n   \"pin\": \"{$pin}\",\n   \"enabled\": \"{$enabled}\"\n}"
+            },
+            "requestTimeout": 500,
+            "switchPanelBackgroundColor": "#b71c1c",
+            "gpioStatusRequest": {
+              "method": "getGpioStatus",
+              "paramsBody": "{}"
+            },
+            "gpioList": [
+              {
+                "pin": 1,
+                "label": "GPIO 1",
+                "row": 0,
+                "col": 0,
+                "_uniqueKey": 0
+              },
+              {
+                "pin": 2,
+                "label": "GPIO 2",
+                "row": 0,
+                "col": 1,
+                "_uniqueKey": 1
+              },
+              {
+                "pin": 3,
+                "label": "GPIO 3",
+                "row": 1,
+                "col": 0,
+                "_uniqueKey": 2
+              }
+            ]
+          },
+          "title": "RPC debug terminal",
+          "dropShadow": true,
+          "enableFullscreen": true,
+          "widgetStyle": {},
+          "titleStyle": {
+            "fontSize": "16px",
+            "fontWeight": 400
+          },
+          "showLegend": false,
+          "actions": {},
+          "datasources": [],
+          "targetDevice": {
+            "type": "entity",
+            "entityAliasId": "d97710f1-0e06-9449-7537-7ff127fff9df"
+          }
+        },
+        "row": 0,
+        "col": 0,
+        "id": "0e9f6d06-f1fd-a581-6314-16834a4e13ff"
+      },
+      "678bcb8a-bfb8-4d95-11d7-9618b90d81a1": {
+        "typeFullFqn": "system.cards.value_card",
+        "type": "latest",
+        "sizeX": 3,
+        "sizeY": 3,
+        "config": {
+          "datasources": [
+            {
+              "type": "entity",
+              "name": "",
+              "entityAliasId": "d97710f1-0e06-9449-7537-7ff127fff9df",
+              "dataKeys": [
+                {
+                  "name": "auth_status",
+                  "type": "timeseries",
+                  "label": "Authentication Status",
+                  "color": "#2196f3",
+                  "settings": {}
+                }
+              ],
+              "alarmFilterConfig": {
+                "statusList": [
+                  "ACTIVE"
+                ]
+              }
+            }
+          ],
+          "showTitle": false,
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgba(0, 0, 0, 0.87)",
+          "padding": "0px",
+          "settings": {
+            "layout": "square",
+            "autoScale": true,
+            "showLabel": true,
+            "labelFont": {
+              "family": "Roboto",
+              "size": 24,
+              "sizeUnit": "px",
+              "style": "normal",
+              "weight": "500",
+              "lineHeight": "1.5"
+            },
+            "labelColor": {
+              "type": "constant",
+              "color": "rgba(0, 0, 0, 0.87)",
+              "colorFunction": "var temperature = value;\nif (typeof temperature !== undefined) {\n  var percent = (temperature + 60)/120 * 100;\n  return tinycolor.mix('blue', 'red', percent).toHexString();\n}\nreturn 'blue';"
+            },
+            "showIcon": false,
+            "iconSize": 40,
+            "iconSizeUnit": "px",
+            "icon": "warning",
+            "iconColor": {
+              "type": "constant",
+              "color": "#5469FF",
+              "colorFunction": "var temperature = value;\nif (typeof temperature !== undefined) {\n  var percent = (temperature + 60)/120 * 100;\n  return tinycolor.mix('blue', 'red', percent).toHexString();\n}\nreturn 'blue';"
+            },
+            "valueFont": {
+              "size": 30,
+              "sizeUnit": "px",
+              "family": "Roboto",
+              "weight": "500",
+              "style": "normal",
+              "lineHeight": "100%"
+            },
+            "valueColor": {
+              "type": "constant",
+              "color": "rgba(0, 0, 0, 0.87)",
+              "colorFunction": "var temperature = value;\nif (typeof temperature !== undefined) {\n  var percent = (temperature + 60)/120 * 100;\n  return tinycolor.mix('blue', 'red', percent).toHexString();\n}\nreturn 'blue';"
+            },
+            "showDate": true,
+            "dateFormat": {
+              "format": null,
+              "lastUpdateAgo": true,
+              "custom": false,
+              "auto": false
+            },
+            "dateFont": {
+              "family": "Roboto",
+              "size": 12,
+              "sizeUnit": "px",
+              "style": "normal",
+              "weight": "500",
+              "lineHeight": "1.33"
+            },
+            "dateColor": {
+              "type": "constant",
+              "color": "rgba(0, 0, 0, 0.38)",
+              "colorFunction": "var temperature = value;\nif (typeof temperature !== undefined) {\n  var percent = (temperature + 60)/120 * 100;\n  return tinycolor.mix('blue', 'red', percent).toHexString();\n}\nreturn 'blue';"
+            },
+            "background": {
+              "type": "color",
+              "color": "#fff",
+              "overlay": {
+                "enabled": false,
+                "color": "rgba(255,255,255,0.72)",
+                "blur": 3
+              }
+            },
+            "padding": ""
+          },
+          "title": "Value card",
+          "dropShadow": true,
+          "enableFullscreen": false,
+          "titleStyle": {
+            "fontSize": "16px",
+            "fontWeight": 400
+          },
+          "units": null,
+          "decimals": 1,
+          "showLegend": false,
+          "widgetStyle": {},
+          "actions": {},
+          "configMode": "basic",
+          "margin": "0px",
+          "borderRadius": "0px",
+          "widgetCss": "",
+          "pageSize": 1024,
+          "noDataDisplayMessage": "",
+          "showTitleIcon": false,
+          "titleTooltip": "",
+          "titleFont": {
+            "size": 12,
+            "sizeUnit": "px",
+            "family": null,
+            "weight": null,
+            "style": null,
+            "lineHeight": "1.6"
+          },
+          "titleIcon": "",
+          "iconColor": "rgba(0, 0, 0, 0.87)",
+          "iconSize": "14px",
+          "timewindowStyle": {
+            "showIcon": true,
+            "iconSize": "14px",
+            "icon": "query_builder",
+            "iconPosition": "left",
+            "font": {
+              "size": 12,
+              "sizeUnit": "px",
+              "family": null,
+              "weight": null,
+              "style": null,
+              "lineHeight": "1"
+            },
+            "color": null
+          }
+        },
+        "row": 0,
+        "col": 0,
+        "id": "678bcb8a-bfb8-4d95-11d7-9618b90d81a1"
+      },
+      "4da3da56-e483-4d25-c82d-ea777a3e59a7": {
+        "typeFullFqn": "system.cards.value_card",
+        "type": "latest",
+        "sizeX": 3,
+        "sizeY": 3,
+        "config": {
+          "datasources": [
+            {
+              "type": "entity",
+              "name": "",
+              "entityAliasId": "d97710f1-0e06-9449-7537-7ff127fff9df",
+              "dataKeys": [
+                {
+                  "name": "auth_failed_count",
+                  "type": "timeseries",
+                  "label": "Failed Authentication",
+                  "color": "#2196f3",
+                  "settings": {}
+                }
+              ],
+              "alarmFilterConfig": {
+                "statusList": [
+                  "ACTIVE"
+                ]
+              }
+            }
+          ],
+          "showTitle": false,
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgba(0, 0, 0, 0.87)",
+          "padding": "0px",
+          "settings": {
+            "layout": "square",
+            "autoScale": true,
+            "showLabel": true,
+            "labelFont": {
+              "family": "Roboto",
+              "size": 24,
+              "sizeUnit": "px",
+              "style": "normal",
+              "weight": "500",
+              "lineHeight": "1.5"
+            },
+            "labelColor": {
+              "type": "constant",
+              "color": "rgba(0, 0, 0, 0.87)",
+              "colorFunction": "var temperature = value;\nif (typeof temperature !== undefined) {\n  var percent = (temperature + 60)/120 * 100;\n  return tinycolor.mix('blue', 'red', percent).toHexString();\n}\nreturn 'blue';"
+            },
+            "showIcon": false,
+            "iconSize": 40,
+            "iconSizeUnit": "px",
+            "icon": "warning",
+            "iconColor": {
+              "type": "constant",
+              "color": "#5469FF",
+              "colorFunction": "var temperature = value;\nif (typeof temperature !== undefined) {\n  var percent = (temperature + 60)/120 * 100;\n  return tinycolor.mix('blue', 'red', percent).toHexString();\n}\nreturn 'blue';"
+            },
+            "valueFont": {
+              "size": 30,
+              "sizeUnit": "px",
+              "family": "Roboto",
+              "weight": "500",
+              "style": "normal",
+              "lineHeight": "100%"
+            },
+            "valueColor": {
+              "type": "constant",
+              "color": "rgba(0, 0, 0, 0.87)",
+              "colorFunction": "var temperature = value;\nif (typeof temperature !== undefined) {\n  var percent = (temperature + 60)/120 * 100;\n  return tinycolor.mix('blue', 'red', percent).toHexString();\n}\nreturn 'blue';"
+            },
+            "showDate": true,
+            "dateFormat": {
+              "format": null,
+              "lastUpdateAgo": true,
+              "custom": false,
+              "auto": false
+            },
+            "dateFont": {
+              "family": "Roboto",
+              "size": 12,
+              "sizeUnit": "px",
+              "style": "normal",
+              "weight": "500",
+              "lineHeight": "1.33"
+            },
+            "dateColor": {
+              "type": "constant",
+              "color": "rgba(0, 0, 0, 0.38)",
+              "colorFunction": "var temperature = value;\nif (typeof temperature !== undefined) {\n  var percent = (temperature + 60)/120 * 100;\n  return tinycolor.mix('blue', 'red', percent).toHexString();\n}\nreturn 'blue';"
+            },
+            "background": {
+              "type": "color",
+              "color": "#fff",
+              "overlay": {
+                "enabled": false,
+                "color": "rgba(255,255,255,0.72)",
+                "blur": 3
+              }
+            },
+            "padding": ""
+          },
+          "title": "Value card",
+          "dropShadow": true,
+          "enableFullscreen": false,
+          "titleStyle": {
+            "fontSize": "16px",
+            "fontWeight": 400
+          },
+          "units": null,
+          "decimals": 1,
+          "showLegend": false,
+          "widgetStyle": {},
+          "actions": {},
+          "configMode": "basic",
+          "margin": "0px",
+          "borderRadius": "0px",
+          "widgetCss": "",
+          "pageSize": 1024,
+          "noDataDisplayMessage": "",
+          "showTitleIcon": false,
+          "titleTooltip": "",
+          "titleFont": {
+            "size": 12,
+            "sizeUnit": "px",
+            "family": null,
+            "weight": null,
+            "style": null,
+            "lineHeight": "1.6"
+          },
+          "titleIcon": "",
+          "iconColor": "rgba(0, 0, 0, 0.87)",
+          "iconSize": "14px",
+          "timewindowStyle": {
+            "showIcon": true,
+            "iconSize": "14px",
+            "icon": "query_builder",
+            "iconPosition": "left",
+            "font": {
+              "size": 12,
+              "sizeUnit": "px",
+              "family": null,
+              "weight": null,
+              "style": null,
+              "lineHeight": "1"
+            },
+            "color": null
+          }
+        },
+        "row": 0,
+        "col": 0,
+        "id": "4da3da56-e483-4d25-c82d-ea777a3e59a7"
+      },
+      "ac4329e9-a3e1-801c-dddb-8038b4a453d7": {
+        "typeFullFqn": "system.status_widget",
+        "type": "rpc",
+        "sizeX": 2,
+        "sizeY": 2,
+        "config": {
+          "showTitle": false,
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgba(0, 0, 0, 0.87)",
+          "padding": "0px",
+          "settings": {
+            "initialState": {
+              "action": "GET_TIME_SERIES",
+              "defaultValue": false,
+              "executeRpc": {
+                "method": "getState",
+                "requestTimeout": 5000,
+                "requestPersistent": false,
+                "persistentPollingInterval": 1000
+              },
+              "getAttribute": {
+                "scope": null,
+                "key": "state"
+              },
+              "getTimeSeries": {
+                "key": "security_locked"
+              },
+              "getAlarmStatus": {
+                "severityList": null,
+                "typeList": null
+              },
+              "dataToValue": {
+                "type": "NONE",
+                "dataToValueFunction": "/* Should return boolean value */\nreturn data;",
+                "compareToValue": true
+              }
+            },
+            "disabledState": {
+              "action": "DO_NOTHING",
+              "defaultValue": false,
+              "getAttribute": {
+                "key": "state",
+                "scope": null
+              },
+              "getTimeSeries": {
+                "key": "state"
+              },
+              "getAlarmStatus": {
+                "severityList": null,
+                "typeList": null
+              },
+              "dataToValue": {
+                "type": "NONE",
+                "compareToValue": true,
+                "dataToValueFunction": "/* Should return boolean value */\nreturn data;"
+              }
+            },
+            "layout": "default",
+            "onState": {
+              "showLabel": true,
+              "label": "Security Lock",
+              "labelFont": {
+                "size": 14,
+                "sizeUnit": "px",
+                "family": "Roboto",
+                "weight": "500",
+                "style": "normal",
+                "lineHeight": "16px"
+              },
+              "showStatus": true,
+              "status": "Lock",
+              "statusFont": {
+                "size": 14,
+                "sizeUnit": "px",
+                "family": "Roboto",
+                "weight": "500",
+                "style": "normal",
+                "lineHeight": "20px"
+              },
+              "icon": "lock_outline",
+              "iconSize": 32,
+              "iconSizeUnit": "px",
+              "primaryColor": "#fff",
+              "secondaryColor": "rgba(255, 255, 255, 0.80)",
+              "background": {
+                "type": "color",
+                "imageUrl": null,
+                "color": "#FF0004",
+                "overlay": {
+                  "enabled": false,
+                  "color": "rgba(255,255,255,0.72)",
+                  "blur": 3
+                }
+              },
+              "primaryColorDisabled": "rgba(0, 0, 0, 0.38)",
+              "secondaryColorDisabled": "rgba(0, 0, 0, 0.38)",
+              "backgroundDisabled": {
+                "type": "color",
+                "color": "#CACACA",
+                "overlay": {
+                  "enabled": false,
+                  "color": "rgba(255,255,255,0.72)",
+                  "blur": 3
+                }
+              }
+            },
+            "offState": {
+              "showLabel": true,
+              "label": "Security Lock",
+              "labelFont": {
+                "size": 14,
+                "sizeUnit": "px",
+                "family": "Roboto",
+                "weight": "500",
+                "style": "normal",
+                "lineHeight": "16px"
+              },
+              "showStatus": true,
+              "status": "Unlock",
+              "statusFont": {
+                "size": 14,
+                "sizeUnit": "px",
+                "family": "Roboto",
+                "weight": "500",
+                "style": "normal",
+                "lineHeight": "20px"
+              },
+              "icon": "lock_open",
+              "iconSize": 32,
+              "iconSizeUnit": "px",
+              "primaryColor": "rgba(0, 0, 0, 0.87)",
+              "secondaryColor": "rgba(0, 0, 0, 0.54)",
+              "background": {
+                "type": "color",
+                "imageUrl": null,
+                "color": "#00FF05",
+                "overlay": {
+                  "enabled": false,
+                  "color": "rgba(255,255,255,0.72)",
+                  "blur": 3
+                }
+              },
+              "primaryColorDisabled": "rgba(0, 0, 0, 0.38)",
+              "secondaryColorDisabled": "rgba(0, 0, 0, 0.38)",
+              "backgroundDisabled": {
+                "type": "color",
+                "color": "#CACACA",
+                "overlay": {
+                  "enabled": false,
+                  "color": "rgba(255,255,255,0.72)",
+                  "blur": 3
+                }
+              }
+            },
+            "padding": ""
+          },
+          "title": "Status widget",
+          "dropShadow": true,
+          "enableFullscreen": false,
+          "widgetStyle": {},
+          "actions": {},
+          "widgetCss": "",
+          "noDataDisplayMessage": "",
+          "titleFont": {
+            "size": 16,
+            "sizeUnit": "px",
+            "family": "Roboto",
+            "weight": "500",
+            "style": null,
+            "lineHeight": "1.6"
+          },
+          "showTitleIcon": false,
+          "titleTooltip": "",
+          "titleStyle": {
+            "fontSize": "16px",
+            "fontWeight": 400
+          },
+          "pageSize": 1024,
+          "titleIcon": "mdi:lightbulb-outline",
+          "iconColor": "rgba(0, 0, 0, 0.87)",
+          "iconSize": "24px",
+          "configMode": "basic",
+          "targetDevice": {
+            "type": "entity",
+            "entityAliasId": "d97710f1-0e06-9449-7537-7ff127fff9df"
+          },
+          "titleColor": null,
+          "borderRadius": null,
+          "datasources": []
+        },
+        "row": 0,
+        "col": 0,
+        "id": "ac4329e9-a3e1-801c-dddb-8038b4a453d7"
+      },
+      "ac7e2d27-7e13-8b2f-2d42-5dbd5db69d5e": {
+        "typeFullFqn": "system.cards.value_card",
+        "type": "latest",
+        "sizeX": 3,
+        "sizeY": 3,
+        "config": {
+          "datasources": [
+            {
+              "type": "entity",
+              "name": "",
+              "entityAliasId": "d97710f1-0e06-9449-7537-7ff127fff9df",
+              "dataKeys": [
+                {
+                  "name": "last_auth_source",
+                  "type": "timeseries",
+                  "label": "Authentication Source",
+                  "color": "#2196f3",
+                  "settings": {}
+                }
+              ],
+              "alarmFilterConfig": {
+                "statusList": [
+                  "ACTIVE"
+                ]
+              }
+            }
+          ],
+          "showTitle": false,
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "color": "rgba(0, 0, 0, 0.87)",
+          "padding": "0px",
+          "settings": {
+            "layout": "square",
+            "autoScale": true,
+            "showLabel": true,
+            "labelFont": {
+              "family": "Roboto",
+              "size": 24,
+              "sizeUnit": "px",
+              "style": "normal",
+              "weight": "500",
+              "lineHeight": "1.5"
+            },
+            "labelColor": {
+              "type": "constant",
+              "color": "rgba(0, 0, 0, 0.87)",
+              "colorFunction": "var temperature = value;\nif (typeof temperature !== undefined) {\n  var percent = (temperature + 60)/120 * 100;\n  return tinycolor.mix('blue', 'red', percent).toHexString();\n}\nreturn 'blue';"
+            },
+            "showIcon": false,
+            "iconSize": 40,
+            "iconSizeUnit": "px",
+            "icon": "warning",
+            "iconColor": {
+              "type": "constant",
+              "color": "#5469FF",
+              "colorFunction": "var temperature = value;\nif (typeof temperature !== undefined) {\n  var percent = (temperature + 60)/120 * 100;\n  return tinycolor.mix('blue', 'red', percent).toHexString();\n}\nreturn 'blue';"
+            },
+            "valueFont": {
+              "size": 20,
+              "sizeUnit": "px",
+              "family": "Roboto",
+              "weight": "500",
+              "style": "normal",
+              "lineHeight": "100%"
+            },
+            "valueColor": {
+              "type": "constant",
+              "color": "rgba(0, 0, 0, 0.87)",
+              "colorFunction": "var temperature = value;\nif (typeof temperature !== undefined) {\n  var percent = (temperature + 60)/120 * 100;\n  return tinycolor.mix('blue', 'red', percent).toHexString();\n}\nreturn 'blue';"
+            },
+            "showDate": true,
+            "dateFormat": {
+              "format": null,
+              "lastUpdateAgo": true,
+              "custom": false,
+              "auto": false
+            },
+            "dateFont": {
+              "family": "Roboto",
+              "size": 12,
+              "sizeUnit": "px",
+              "style": "normal",
+              "weight": "500",
+              "lineHeight": "1.33"
+            },
+            "dateColor": {
+              "type": "constant",
+              "color": "rgba(0, 0, 0, 0.38)",
+              "colorFunction": "var temperature = value;\nif (typeof temperature !== undefined) {\n  var percent = (temperature + 60)/120 * 100;\n  return tinycolor.mix('blue', 'red', percent).toHexString();\n}\nreturn 'blue';"
+            },
+            "background": {
+              "type": "color",
+              "color": "#fff",
+              "overlay": {
+                "enabled": false,
+                "color": "rgba(255,255,255,0.72)",
+                "blur": 3
+              }
+            },
+            "padding": ""
+          },
+          "title": "Value card",
+          "dropShadow": true,
+          "enableFullscreen": false,
+          "titleStyle": {
+            "fontSize": "16px",
+            "fontWeight": 400
+          },
+          "units": null,
+          "decimals": 1,
+          "showLegend": false,
+          "widgetStyle": {},
+          "actions": {},
+          "configMode": "basic",
+          "margin": "0px",
+          "borderRadius": "0px",
+          "widgetCss": "",
+          "pageSize": 1024,
+          "noDataDisplayMessage": "",
+          "showTitleIcon": false,
+          "titleTooltip": "",
+          "titleFont": {
+            "size": 12,
+            "sizeUnit": "px",
+            "family": null,
+            "weight": null,
+            "style": null,
+            "lineHeight": "1.6"
+          },
+          "titleIcon": "",
+          "iconColor": "rgba(0, 0, 0, 0.87)",
+          "iconSize": "14px",
+          "timewindowStyle": {
+            "showIcon": true,
+            "iconSize": "14px",
+            "icon": "query_builder",
+            "iconPosition": "left",
+            "font": {
+              "size": 12,
+              "sizeUnit": "px",
+              "family": null,
+              "weight": null,
+              "style": null,
+              "lineHeight": "1"
+            },
+            "color": null
+          }
+        },
+        "row": 0,
+        "col": 0,
+        "id": "ac7e2d27-7e13-8b2f-2d42-5dbd5db69d5e"
       }
     },
     "states": {
@@ -6755,6 +7476,36 @@
                 "sizeY": 9,
                 "row": 51,
                 "col": 20
+              },
+              "0e9f6d06-f1fd-a581-6314-16834a4e13ff": {
+                "sizeX": 9,
+                "sizeY": 5,
+                "row": 68,
+                "col": 0
+              },
+              "678bcb8a-bfb8-4d95-11d7-9618b90d81a1": {
+                "sizeX": 4,
+                "sizeY": 4,
+                "row": 60,
+                "col": 20
+              },
+              "4da3da56-e483-4d25-c82d-ea777a3e59a7": {
+                "sizeX": 4,
+                "sizeY": 4,
+                "row": 60,
+                "col": 24
+              },
+              "ac4329e9-a3e1-801c-dddb-8038b4a453d7": {
+                "sizeX": 4,
+                "sizeY": 4,
+                "row": 64,
+                "col": 20
+              },
+              "ac7e2d27-7e13-8b2f-2d42-5dbd5db69d5e": {
+                "sizeX": 4,
+                "sizeY": 4,
+                "row": 64,
+                "col": 24
               }
             },
             "gridSettings": {
