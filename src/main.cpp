@@ -48,6 +48,21 @@ PubSubClient tbMqttClient(tbWiFiClient);
 bool rpcSubscribed = false;
 bool immediateTelemetryRequested = false;
 
+// =====================================================
+// RPC SECURITY / TOKEN AUTHENTICATION
+// =====================================================
+uint8_t authFailedCount = 0;
+
+const char* lastAuthStatus = "IDLE";
+const char* lastAuthSource = "NONE";
+
+// Temporary protection setelah authentication gagal berturut-turut
+const uint8_t AUTH_MAX_FAILED_ATTEMPTS = 3;
+const unsigned long SECURITY_LOCK_MS = 30000UL; // 30 detik untuk demo
+
+bool securityLocked = false;
+unsigned long securityLockStartedMillis = 0;
+
 // ========== PIN HARDWARE ==========
 #define DHTPIN       4
 #define DHTTYPE      DHT22
@@ -1814,6 +1829,23 @@ bool publishTelemetry() {
   payload += ",\"event_sequence\":";
   payload += String(eventSequence);
 
+  // ===================================================
+  // SECURITY TELEMETRY
+  // ===================================================
+  payload += ",\"auth_status\":\"";
+  payload += lastAuthStatus;
+  payload += "\"";
+
+  payload += ",\"auth_failed_count\":";
+  payload += String(authFailedCount);
+
+  payload += ",\"security_locked\":";
+  payload += securityLocked ? "true" : "false";
+
+  payload += ",\"last_auth_source\":\"";
+  payload += lastAuthSource;
+  payload += "\"";
+
   payload += ",\"lamp_blue_requested\":";
   payload += lampuBiruState == HIGH ? "true" : "false";
 
@@ -1903,6 +1935,197 @@ String jsonValueRaw(const String& json, const char* key) {
   String result = json.substring(start, end);
   result.trim();
   return result;
+}
+
+// =====================================================
+// RPC SECURITY HELPER
+// =====================================================
+
+// Mengecek apakah security token sudah benar-benar dikonfigurasi.
+// Jika masih menggunakan placeholder, protected RPC akan fail-closed.
+bool rpcSecurityConfigured() {
+  String configuredToken = String(RPC_SECURITY_TOKEN);
+  configuredToken.trim();
+
+  return configuredToken.length() >= 8 &&
+         configuredToken != "ISI_RPC_SECURITY_TOKEN";
+}
+
+// Hanya RPC yang mengubah kondisi perangkat yang membutuhkan token.
+// Getter tetap diperbolehkan tanpa token.
+bool isProtectedRpcMethod(const String& method) {
+  return
+    method == "setLampBlue"  ||
+    method == "setLampGreen" ||
+    method == "setLampRed"   ||
+    method == "setWhitePwm"  ||
+    method == "setFanPwm"    ||
+    method == "openDoor"     ||
+    method == "closeDoor"    ||
+    method == "ringBell"     ||
+    method == "muteAlarm"    ||
+    method == "unmuteAlarm";
+}
+
+void activateSecurityLock() {
+  if (securityLocked) {
+    return;
+  }
+
+  securityLocked = true;
+  securityLockStartedMillis = millis();
+  lastAuthStatus = "LOCKED";
+
+  enqueueEvent(
+    "SECURITY_LOCKED",
+    true,
+    "THINGSBOARD_RPC"
+  );
+
+  immediateTelemetryRequested = true;
+
+  Serial.println();
+  Serial.println("================================");
+  Serial.println("[SECURITY] SECURITY LOCK ACTIVE");
+  Serial.print("[SECURITY] Failed attempts : ");
+  Serial.println(authFailedCount);
+  Serial.println("[SECURITY] Protected RPC diblokir selama 30 detik.");
+  Serial.println("================================");
+}
+
+void registerAuthenticationFailure() {
+  if (authFailedCount < AUTH_MAX_FAILED_ATTEMPTS) {
+    authFailedCount++;
+  }
+
+  if (authFailedCount >= AUTH_MAX_FAILED_ATTEMPTS) {
+    activateSecurityLock();
+  } else {
+    lastAuthStatus = "FAILED";
+  }
+
+  immediateTelemetryRequested = true;
+}
+
+// Validasi application-level token pada RPC protected.
+// Token TIDAK pernah dicetak ke Serial Monitor.
+bool validateProtectedRpcToken(
+  const String& requestBody,
+  String& errorMessage
+) {
+  lastAuthSource = "THINGSBOARD_RPC";
+
+  // Fail-closed bila token belum dikonfigurasi.
+  if (!rpcSecurityConfigured()) {
+    lastAuthStatus = "NOT_CONFIGURED";
+    errorMessage = "security_not_configured";
+
+    Serial.println(
+      "[SECURITY] RPC ditolak: RPC security token belum dikonfigurasi."
+    );
+
+    immediateTelemetryRequested = true;
+    return false;
+  }
+
+  // ===================================================
+  // SECURITY LOCK CHECK
+  // ===================================================
+  // Ketika lock aktif, bahkan token yang benar tetap ditolak.
+  if (securityLocked) {
+    lastAuthStatus = "LOCKED";
+    errorMessage = "security_locked";
+
+    Serial.println(
+      "[SECURITY] RPC ditolak: temporary security lock masih aktif."
+    );
+
+    return false;
+  }
+
+  String suppliedToken = jsonValueRaw(requestBody, "token");
+
+  // ===================================================
+  // TOKEN TIDAK ADA
+  // ===================================================
+  if (suppliedToken.length() == 0) {
+
+    registerAuthenticationFailure();
+
+    errorMessage = "missing_security_token";
+
+    Serial.print(
+      "[SECURITY] RPC ditolak: security token tidak ditemukan. Failed="
+    );
+    Serial.println(authFailedCount);
+
+    return false;
+  }
+
+  // ===================================================
+  // TOKEN SALAH
+  // ===================================================
+  if (suppliedToken != String(RPC_SECURITY_TOKEN)) {
+
+    registerAuthenticationFailure();
+
+    errorMessage = "invalid_security_token";
+
+    Serial.print(
+      "[SECURITY] RPC ditolak: security token tidak valid. Failed="
+    );
+    Serial.println(authFailedCount);
+
+    return false;
+  }
+
+  // ===================================================
+  // TOKEN VALID
+  // ===================================================
+  authFailedCount = 0;
+  lastAuthStatus = "SUCCESS";
+  lastAuthSource = "THINGSBOARD_RPC";
+  errorMessage = "";
+
+  immediateTelemetryRequested = true;
+
+  Serial.println(
+    "[SECURITY] RPC authentication SUCCESS."
+  );
+
+  return true;
+}
+
+void updateSecurityLock() {
+  if (!securityLocked) {
+    return;
+  }
+
+  if (millis() - securityLockStartedMillis < SECURITY_LOCK_MS) {
+    return;
+  }
+
+  securityLocked = false;
+  securityLockStartedMillis = 0;
+  authFailedCount = 0;
+
+  lastAuthStatus = "UNLOCKED";
+  lastAuthSource = "LOCAL_TIMER";
+
+  enqueueEvent(
+    "SECURITY_UNLOCKED",
+    false,
+    "LOCAL_TIMER"
+  );
+
+  immediateTelemetryRequested = true;
+
+  Serial.println();
+  Serial.println("================================");
+  Serial.println("[SECURITY] SECURITY LOCK RELEASED");
+  Serial.println("[SECURITY] Authentication counter kembali ke 0.");
+  Serial.println("[SECURITY] Protected RPC dapat digunakan kembali.");
+  Serial.println("================================");
 }
 
 bool parseRpcBool(const String& rawValue, bool& result) {
@@ -1998,23 +2221,87 @@ void thingsBoardRpcCallback(char* topic, byte* payload, unsigned int length) {
   String method = jsonValueRaw(requestBody, "method");
   String params = jsonValueRaw(requestBody, "params");
 
+  // Setter/action menggunakan struktur:
+  // params: {
+  //   "token": "...",
+  //   "value": ...
+  // }
+  //
+  // Karena parser existing sederhana, token dan value
+  // dibaca langsung dari keseluruhan requestBody.
+  bool protectedRpc = isProtectedRpcMethod(method);
+
+  String rpcValue = protectedRpc
+    ? jsonValueRaw(requestBody, "value")
+    : params;
+
+
   Serial.println();
   Serial.println("=== THINGSBOARD RPC DITERIMA ===");
-  Serial.print("Topic  : ");
+
+  Serial.print("Topic     : ");
   Serial.println(topicText);
-  Serial.print("Payload: ");
-  Serial.println(requestBody);
-  Serial.print("Method : ");
+
+  Serial.print("Method    : ");
   Serial.println(method);
-  Serial.print("Params : ");
-  Serial.println(params);
+
+  Serial.print("Protected : ");
+  Serial.println(protectedRpc ? "YA" : "TIDAK");
+
 
   String response;
   bool commandProcessed = false;
 
+
+  // =====================================================
+  // SECURITY GATE
+  // =====================================================
+  if (protectedRpc) {
+    String authError;
+
+    if (!validateProtectedRpcToken(requestBody, authError)) {
+
+      response = rpcBaseResponse(
+        false,
+        method,
+        authError
+      );
+
+      response += ",\"auth_status\":\"";
+      response += lastAuthStatus;
+      response += "\"";
+
+      response += ",\"auth_failed_count\":";
+      response += String(authFailedCount);
+
+      response += ",\"security_locked\":";
+      response += securityLocked ? "true" : "false";
+
+      response += "}";
+
+      publishRpcResponse(
+        requestId,
+        response
+      );
+
+      // Nantinya security telemetry juga akan ikut dikirim
+      // melalui mekanisme existing ini.
+      immediateTelemetryRequested = true;
+
+      Serial.println(
+        "RPC diproses: TIDAK / AUTHENTICATION FAILED"
+      );
+      Serial.println(
+        "================================"
+      );
+
+      return;
+    }
+  }
+
   if (method == "setLampBlue") {
     bool value;
-    if (parseRpcBool(params, value)) {
+    if (parseRpcBool(rpcValue, value)) {
       setLampuBiru(value ? HIGH : LOW);
       enqueueEvent("RPC_LAMP_BLUE", value, "THINGSBOARD_RPC");
 
@@ -2032,7 +2319,7 @@ void thingsBoardRpcCallback(char* topic, byte* payload, unsigned int length) {
   }
   else if (method == "setLampGreen") {
     bool value;
-    if (parseRpcBool(params, value)) {
+    if (parseRpcBool(rpcValue, value)) {
       setLampuHijau(value ? HIGH : LOW);
       enqueueEvent("RPC_LAMP_GREEN", value, "THINGSBOARD_RPC");
 
@@ -2050,7 +2337,7 @@ void thingsBoardRpcCallback(char* topic, byte* payload, unsigned int length) {
   }
   else if (method == "setLampRed") {
     bool value;
-    if (parseRpcBool(params, value)) {
+    if (parseRpcBool(rpcValue, value)) {
       setLampuMerah(value ? HIGH : LOW);
       enqueueEvent("RPC_LAMP_RED", value, "THINGSBOARD_RPC");
 
@@ -2068,7 +2355,7 @@ void thingsBoardRpcCallback(char* topic, byte* payload, unsigned int length) {
   }
   else if (method == "setWhitePwm") {
     int value;
-    if (parseRpcInt(params, value) && value >= 0 && value <= 255) {
+    if (parseRpcInt(rpcValue, value) && value >= 0 && value <= 255) {
       setLampuPutihPWM(value);
       enqueueEvent("RPC_WHITE_PWM", value > 0, "THINGSBOARD_RPC");
 
@@ -2086,7 +2373,7 @@ void thingsBoardRpcCallback(char* topic, byte* payload, unsigned int length) {
   }
   else if (method == "setFanPwm") {
     int value;
-    if (parseRpcInt(params, value) && value >= 0 && value <= 255) {
+    if (parseRpcInt(rpcValue, value) && value >= 0 && value <= 255) {
       setKipasPWM(value);
       enqueueEvent("RPC_FAN_PWM", value > 0, "THINGSBOARD_RPC");
 
@@ -2247,6 +2534,16 @@ void thingsBoardRpcCallback(char* topic, byte* payload, unsigned int length) {
     response += persistentBufferRestored ? "true" : "false";
     response += ",\"persistent_storage_ok\":";
     response += persistentStorageOk ? "true" : "false";
+    response += ",\"auth_status\":\"";
+    response += lastAuthStatus;
+    response += "\"";
+    response += ",\"auth_failed_count\":";
+    response += String(authFailedCount);
+    response += ",\"security_locked\":";
+    response += securityLocked ? "true" : "false";
+    response += ",\"last_auth_source\":\"";
+    response += lastAuthSource;
+    response += "\"";
     response += "}";
     commandProcessed = true;
   }
@@ -2404,7 +2701,11 @@ void loop() {
   // Menyelesaikan gerakan servo continuous tanpa delay.
   updateServoTimedMove();
 
+  // PRIORITAS UTAMA: fire safety lokal
   updateFireAlarm();
+
+  // Security timer bersifat non-blocking dan tidak mengganggu fire logic.
+  updateSecurityLock();
 
   // Status gas dan pintu tetap dipantau saat fire alarm aktif.
   if (millis() - lastSensorCheckMillis >= FAST_SENSOR_CHECK_MS) {
