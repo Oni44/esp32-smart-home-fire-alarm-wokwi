@@ -83,8 +83,8 @@
     {
       "type": "wokwi-buzzer",
       "id": "buzzer1",
-      "top": 220,
-      "left": 10,
+      "top": 160,
+      "left": 250,
       "attrs": {
         "volume": "0.3"
       }
@@ -93,7 +93,7 @@
     {
       "type": "wokwi-servo",
       "id": "servo1",
-      "top": 210,
+      "top": 250,
       "left": 250,
       "attrs": {
         "horn": "double"

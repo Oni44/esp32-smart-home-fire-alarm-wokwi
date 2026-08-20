@@ -1,227 +1,520 @@
-# ESP32 ThingsBoard with DHT22 Sensor and LED
+# ESP32 Smart Home Fire Alarm — IoT Final Project
 
-This project is a **basic template** for ESP32 that integrates a DHT22 temperature/humidity sensor and a controllable LED, all simulated in **Wokwi** and connected to **ThingsBoard** for IoT.
+Final Project Internet of Things (IoT) yang mengembangkan sistem **Smart Home Fire Alarm berbasis ESP32** menjadi sistem yang lebih **intelligent, secure, analytical, dan resilient**.
 
-## 📋 Description
+Project dijalankan menggunakan **Wokwi + PlatformIO**, terintegrasi dengan **ThingsBoard** melalui MQTT dan **Telegram Bot** untuk monitoring, notifikasi, serta remote control.
 
-The project implements:
-- 📡 Automatic WiFi connection
-- 🌡️ Temperature and humidity reading with DHT22 sensor
-- 💡 Remote LED control via ThingsBoard
-- 📊 Telemetry data sending every 2 seconds
-- 🔄 Bidirectional state and attribute control
-- 📱 Complete simulation in Wokwi
+---
 
-## 🔧 Hardware Used
+## Final Project Team
 
-### Physical Components
-- **ESP32 DevKit C v4** - Main microcontroller
-- **DHT22** - Digital temperature and humidity sensor
-- **Red LED** - Controllable visual indicator
+**Group 5 — BINUS Graduate Program, 2026**
 
-### Connections (according to diagram.json)
+- Andronikus Marintan
+- Bobby Daniyal
+- Naura Retyani Ajisasongko
 
-![Circuit Schematic](squema.jpg)
+---
 
-```
-DHT22:
-├── VCC → ESP32 3V3
-├── GND → ESP32 GND
-└── DATA → ESP32 GPIO4
+## Final Project Improvements
 
-LED:
-├── Anode → ESP32 GPIO2
-└── Cathode → ESP32 GND
+Final Project menggunakan sistem IoT sebelumnya sebagai baseline dan menambahkan dua enhancement utama:
 
-```
+### 1. Adaptive Intelligence / Dynamic Threshold
 
-## 📚 Dependencies and Libraries
+Sistem tidak lagi hanya menggunakan static temperature threshold.
 
-### PlatformIO Libraries
-```ini
-lib_deps = 
-    thingsboard/ThingsBoard@0.14.0           # ThingsBoard MQTT Client
-    arduino-libraries/ArduinoHttpClient@^0.6.1  # HTTP Client
-    arduino-libraries/ArduinoMqttClient@^0.1.8  # MQTT Client
-    knolleary/PubSubClient@^2.8              # MQTT Pub/Sub
-    adafruit/DHT sensor library@^1.4.6      # DHT22 Driver
+ESP32 membentuk **adaptive temperature baseline** menggunakan moving average dari data suhu normal, kemudian menghitung:
+
+- Dynamic Warning Threshold
+- Dynamic Fire Threshold
+- Dynamic Clear Threshold
+- Risk classification: `SAFE`, `WARNING`, `DANGER`
+
+Konfigurasi utama:
+
+```text
+Adaptive Window          : 10 samples
+Minimum Samples          : 5 samples
+Warning Delta            : +4 °C
+Fire Delta               : +8 °C
+Clear Hysteresis         : 2 °C
+Minimum Fire Threshold   : 30 °C
+Critical Temperature     : 60 °C
 ```
 
-### System Libraries
-- `WiFi.h` - WiFi connectivity (ESP32)
-- `Arduino_MQTT_Client.h` - MQTT client for ThingsBoard
-- `Server_Side_RPC.h` - Remote RPC calls
-- `Attribute_Request.h` - Attribute requests
-- `Shared_Attribute_Update.h` - Shared attribute updates
-- `DHT.h` - Temperature/humidity sensor
+Untuk menjaga keselamatan, adaptive model **tidak belajar dari kondisi abnormal**, yaitu ketika:
 
-## ⚙️ Configuration
+- Fire sedang aktif
+- Gas/asap terdeteksi
+- Temperatur telah mencapai warning threshold
 
-### 1. WiFi Credentials
+Hard safety limit **60 °C** tetap dipertahankan sehingga temperatur kritis dapat memicu fire alarm meskipun gas belum terdeteksi.
+
+---
+
+### 2. IoT Security / Token-Based Authentication
+
+Protected ThingsBoard Server-Side RPC menggunakan **application-level token authentication**.
+
+Protected RPC meliputi:
+
+```text
+setLampBlue
+setLampGreen
+setLampRed
+setWhitePwm
+setFanPwm
+openDoor
+closeDoor
+ringBell
+muteAlarm
+unmuteAlarm
+```
+
+Read-only RPC tetap dapat digunakan untuk monitoring:
+
+```text
+getLampBlue
+getLampGreen
+getLampRed
+getWhitePwm
+getFanPwm
+getStatus
+```
+
+Security enhancement meliputi:
+
+- RPC Security Token
+- Missing token rejection
+- Invalid token rejection
+- Authentication failure counter
+- Temporary security lock setelah 3 kegagalan
+- Automatic unlock setelah 30 detik
+- Security telemetry ke ThingsBoard
+- `SECURITY_LOCKED` dan `SECURITY_UNLOCKED` event
+- Read-only monitoring tetap tersedia ketika security lock aktif
+
+Security lock hanya memblokir **remote control**, bukan local fire safety.
+
+---
+
+## Main Features
+
+### Smart Home Monitoring
+
+- DHT22 temperature and humidity monitoring
+- Gas/smoke detection simulation
+- Door/reed-switch monitoring
+- LCD 16x2 local status display
+- Lamp/LED control
+- PWM lighting
+- Fan PWM
+- Servo door control
+- Buzzer/bell
+
+### Local Edge Fire Safety
+
+Fire detection dan emergency action diproses langsung pada ESP32.
+
+Ketika kondisi fire aktif:
+
+- `fire_active = true`
+- `risk_status = DANGER`
+- Alarm buzzer aktif
+- Alarm lamps aktif
+- Fan effective PWM = `255`
+- Servo membuka pintu
+- LCD menampilkan fire warning
+- Event `FIRE_STARTED` dibuat
+- Telegram notification dikirim jika koneksi tersedia
+- Telemetry dikirim ke ThingsBoard jika koneksi tersedia
+
+### Safety Interlock
+
+Remote command tidak dapat mengalahkan local safety rule.
+
+Contoh:
+
+```text
+Valid RPC Token
+      ↓
+Authentication SUCCESS
+      ↓
+closeDoor
+      ↓
+Fire Active?
+      ↓
+YES
+      ↓
+Command REJECTED
+```
+
+Pintu tetap terbuka selama kondisi kebakaran aktif.
+
+### ThingsBoard
+
+- MQTT telemetry
+- Advanced analytics dashboard
+- Sensor monitoring
+- Actuator status
+- SAFE / WARNING / DANGER indicator
+- Adaptive baseline
+- Dynamic warning/fire threshold
+- Time-series trend analytics
+- Event history
+- Alarm monitoring
+- Server-side RPC remote control
+- Security status monitoring
+
+Security telemetry:
+
+```text
+auth_status
+auth_failed_count
+security_locked
+last_auth_source
+```
+
+### Telegram
+
+Telegram Bot digunakan untuk:
+
+- Status monitoring
+- Fire notification
+- Gas/smoke notification
+- Door notification
+- Lamp control
+- Fan control
+- Servo door control
+- Bell
+- Alarm mute/unmute
+
+### Persistent Event Buffer
+
+Event penting disimpan menggunakan **ESP32 Preferences / NVS** ketika cloud tidak tersedia.
+
+Event dapat dikirim kembali ke ThingsBoard setelah koneksi pulih.
+
+Contoh event:
+
+```text
+SYSTEM_BOOT
+GAS_DETECTED
+GAS_CLEARED
+DOOR_OPENED
+DOOR_CLOSED
+FIRE_STARTED
+FIRE_CLEARED
+ALARM_MUTED
+ALARM_UNMUTED
+WIFI_DISCONNECTED
+WIFI_RECONNECTED
+THINGSBOARD_DISCONNECTED
+THINGSBOARD_RECONNECTED
+SECURITY_LOCKED
+SECURITY_UNLOCKED
+```
+
+---
+
+## System Architecture
+
+```text
+                  SENSOR LAYER
+       DHT22 / Gas / Door Sensor
+                    |
+                    v
+            ESP32 EDGE PROCESSING
+       +---------------------------+
+       | Sensor Processing         |
+       | Adaptive Intelligence     |
+       | Fire Detection            |
+       | Safety Interlock          |
+       | Event Manager             |
+       | Persistent Buffer         |
+       +---------------------------+
+          |                    |
+          | Local Action       | Communication
+          v                    v
+ LED / Buzzer / Fan /      Wi-Fi / MQTT
+ Servo / LCD                   |
+                               v
+                          ThingsBoard
+                    Telemetry / Dashboard
+                    Analytics / Event / RPC
+                               |
+                               v
+                    RPC Token Authentication
+                               |
+                               v
+                         Safety Interlock
+                               |
+                               v
+                            Actuator
+```
+
+**Local safety decision memiliki prioritas lebih tinggi daripada remote command.**
+
+---
+
+## Hardware / Wokwi Pin Mapping
+
+| Component            | ESP32 Pin | Function               |
+| -------------------- | --------: | ---------------------- |
+| DHT22                |    GPIO 4 | Temperature & humidity |
+| Gas/MQ2 simulation   |   GPIO 16 | Gas/smoke detection    |
+| Door/reed simulation |   GPIO 17 | Door status            |
+| Blue lamp            |   GPIO 14 | Lamp                   |
+| White PWM lamp       |   GPIO 27 | PWM lamp               |
+| Red lamp             |   GPIO 26 | Lamp                   |
+| Green lamp           |   GPIO 25 | Lamp                   |
+| Fan PWM              |   GPIO 33 | Fan simulation         |
+| Buzzer               |   GPIO 32 | Alarm / bell           |
+| Servo                |   GPIO 13 | Door                   |
+| LCD SDA              |   GPIO 21 | I2C                    |
+| LCD SCL              |   GPIO 22 | I2C                    |
+
+---
+
+## Project Structure
+
+```text
+esp32-smart-home-fire-alarm-wokwi/
+|
+├── include/
+│   ├── secrets.h
+│   └── secrets.example.h
+|
+├── src/
+│   └── main.cpp
+|
+├── thingsboard/
+│   └── smart_home_dashboard_-_wokwi.json
+|
+├── diagram.json
+├── platformio.ini
+├── wokwi.toml
+├── .gitignore
+└── README.md
+```
+
+> `include/secrets.h` adalah file lokal yang berisi credential aktual dan **tidak boleh di-commit ke Git**.
+
+---
+
+## Configuration
+
+### 1. Create Local Credential File
+
+Copy:
+
+```text
+include/secrets.example.h
+```
+
+menjadi:
+
+```text
+include/secrets.h
+```
+
+Kemudian isi nilai konfigurasi lokal:
+
 ```cpp
-constexpr char WIFI_SSID[] = "Wokwi-GUEST";      // WiFi Network
-constexpr char WIFI_PASSWORD[] = "";             // Password (empty for Wokwi)
+WIFI_SSID
+WIFI_PASSWORD
+
+TELEGRAM_TOKEN
+TELEGRAM_CHAT_ID
+
+TB_HOST
+TB_PORT
+TB_ACCESS_TOKEN
+
+RPC_SECURITY_TOKEN
 ```
 
-### 2. ThingsBoard Configuration
-```cpp
-constexpr char TOKEN[] = "xxxxxxxxxxxxxxxxxxxx";           // Device token (from thingboard)
-constexpr char THINGSBOARD_SERVER[] = "thingsboard.cloud"; // ThingsBoard server
-constexpr uint16_t THINGSBOARD_PORT = 1883U;               // MQTT port
+Credential aktual tidak disertakan dalam repository.
+
+---
+
+### 2. ThingsBoard Dashboard
+
+Dashboard export:
+
+```text
+thingsboard/smart_home_dashboard_-_wokwi.json
 ```
 
-### 3. Hardware Pins
-```cpp
-#define DHTPIN 4        // DHT22 sensor pin
-#define DHTTYPE DHT22   // DHT sensor type
-#define LED_PIN 2       // External LED pin
+RPC Security Token pada dashboard yang dibagikan harus menggunakan placeholder, bukan token aktual.
+
+Contoh parameter control:
+
+```javascript
+return {
+  token: "RPC_SECURITY_TOKEN_PLACEHOLDER",
+  value: value,
+};
 ```
 
-## 🚀 Installation and Usage
+Untuk action tanpa value:
 
-### 1. Prerequisites
-- [PlatformIO IDE](https://platformio.org/platformio-ide) or [PlatformIO Core](https://platformio.org/install/cli)
-- Account on [ThingsBoard Cloud](https://thingsboard.cloud/) or local server
-- Access to [Wokwi](https://wokwi.com/) for simulation
+```javascript
+return {
+  token: "RPC_SECURITY_TOKEN_PLACEHOLDER",
+};
+```
 
-### 2. Project Setup
+Setelah dashboard di-import ke ThingsBoard, ganti placeholder tersebut dengan token lokal yang sesuai.
+
+---
+
+## Build and Run
+
+### Requirements
+
+- Visual Studio Code
+- PlatformIO
+- Wokwi extension / simulator
+- ThingsBoard instance
+- Telegram Bot configuration
+
+### Build
+
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd esp32-thingsboard-platformio-wokwi
-
-# Install dependencies
-pio lib install
-
-# Build the project
 pio run
 ```
 
-### 3. ThingsBoard Configuration
-1. Create a new device in ThingsBoard
-2. Copy the device **Access Token**
-3. Replace the `TOKEN` in `main.cpp`
-4. Configure dashboard to visualize:
-   - `temperature` (°C)
-   - `humidity` (%)
-   - `ledState` (boolean)
-   - `ledMode` (0=manual, 1=automatic)
+### Run Simulation
 
-### 4. Wokwi Simulation
-1. Open the project in Wokwi
-2. The `diagram.json` file contains hardware configuration
-3. Run the simulation
-4. Monitor serial port for debugging
+Gunakan konfigurasi:
 
-## 📊 Features
-
-### Automatic Telemetry (every 2s)
-- **temperature**: Temperature in °C from DHT22
-- **humidity**: Relative humidity in % from DHT22
-- **ledState**: Current LED state (true/false)
-- **ledMode**: LED mode (0=manual, 1=blinking)
-
-### Device Attributes
-- **macAddress**: ESP32 MAC address
-- **rssi**: WiFi signal strength
-- **channel**: WiFi channel
-- **bssid**: Access Point BSSID
-- **localIp**: Assigned local IP
-- **ssid**: WiFi network name
-
-### Remote Control (RPC)
-- **setLedMode**: Change LED mode
-  ```json
-  {"method": "setLedMode", "params": 0}  // Manual mode
-  {"method": "setLedMode", "params": 1}  // Blinking mode
-  ```
-
-### Shared Attributes
-- **ledState**: Control LED state (true/false)
-- **blinkingInterval**: Blinking interval in ms (10-60000)
-
-## 🏗️ Project Structure
-
-```
-esp32-thingsboard-platformio-wokwi/
-├── src/
-│   └── main.cpp             # Main code
-├── include/
-│   └── README               # Custom headers
-├── lib/
-│   └── README               # Local libraries
-├── test/
-│   └── README               # Unit tests
-├── platformio.ini           # PlatformIO configuration
-├── wokwi.toml               # Wokwi configuration
-├── diagram.json             # Wokwi circuit diagram
-└── README.md                
+```text
+diagram.json
+wokwi.toml
 ```
 
-## 🔍 Monitoring and Debug
-
-### Serial Monitor
-```bash
-pio device monitor --baud 115200
-```
-
-### Main Debug Messages
-- WiFi connection: `"Connected to AP"`
-- ThingsBoard connection: `"Subscribe done"`
-- DHT22 readings: `"Failed to read from DHT sensor!"` (if error)
-- RPC received: `"Received the set led state RPC method"`
-- Attribute changes: `"LED state is set to: X"`
-
-## 🎛️ Customization
-
-### Change Telemetry Interval
-```cpp
-constexpr int16_t telemetrySendInterval = 2000U;  // Change value in ms
-```
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **WiFi connection fails**
-   - Verify SSID and password
-   - In Wokwi use "Wokwi-GUEST" without password
-
-2. **ThingsBoard connection fails**
-   - Verify device token
-   - Check network connectivity
-   - Review firewall on port 1883
-
-3. **DHT22 sensor not responding**
-   - Verify connections in `diagram.json`
-   - Check DATA pin (GPIO4)
-   - Add longer delay in initialization
-
-4. **LED not responding**
-   - Verify LED_PIN (GPIO2)
-   - Check anode/cathode connection
-   - Review control logic in ThingsBoard
-
-## 📄 License
-
-This project is an open source educational template. Free to use and modify.
-
-## 🤝 Contributions
-
-Contributions are welcome! Please:
-1. Fork the project
-2. Create a branch for your feature
-3. Commit your changes
-4. Open a Pull Request
-
-## 📞 Support
-
-For questions or issues:
-- Create an issue in the repository
-- Review [ThingsBoard documentation](https://thingsboard.io/docs/devices-library/esp32-dev-kit-v1/)
-- Check [Wokwi documentation](https://docs.wokwi.com/)
+kemudian jalankan Wokwi Simulator dari VS Code.
 
 ---
-**Author**: Mirutec - Roger Chung  
-**Version**: 1.0  
-**Date**: September 2025
+
+## Final Stable Version
+
+Final implementation checkpoint:
+
+```text
+Branch : main
+Tag    : v1.0-final
+Commit : c7b1ff7
+```
+
+Tag description:
+
+```text
+Final stable IoT project with adaptive intelligence and token authentication
+```
+
+Final stable version mencakup:
+
+- Edge fire safety
+- Persistent event buffer
+- Adaptive Intelligence
+- Dynamic Threshold
+- SAFE / WARNING / DANGER classification
+- Advanced ThingsBoard analytics
+- Token-Based Authentication
+- Authentication failure counter
+- Temporary Security Lock
+- Automatic Unlock
+- Security telemetry
+- Authenticated ThingsBoard dashboard control
+
+---
+
+## Repository Access
+
+Repository:
+
+```text
+https://github.com/Oni44/esp32-smart-home-fire-alarm-wokwi
+```
+
+**Repository saat ini bersifat private.**
+
+Pengguna yang belum diberi akses GitHub tidak dapat membuka source code hanya dengan URL tersebut.
+
+Untuk kebutuhan evaluasi/submission, source code dapat diberikan melalui salah satu cara berikut:
+
+1. Memberikan akses collaborator/read access kepada dosen/penguji; atau
+2. Menyertakan source-code export/ZIP bersama submission; atau
+3. Mengubah repository menjadi public apabila kebijakan project mengizinkan.
+
+Credential aktual tetap tidak boleh ikut dibagikan.
+
+---
+
+## Security Notice
+
+Credential berikut tidak disimpan pada source repository:
+
+- Wi-Fi credential
+- Telegram Bot token
+- Telegram Chat ID
+- ThingsBoard device access token
+- RPC Security Token
+
+Gunakan:
+
+```text
+include/secrets.example.h
+```
+
+sebagai template konfigurasi.
+
+Jangan commit:
+
+```text
+include/secrets.h
+```
+
+---
+
+## Project Attribution
+
+### Final Project Development and Major Enhancements
+
+- Andronikus Marintan
+- Bobby Daniyal
+- Naura Retyani Ajisasongko
+- Group 5 — BINUS Graduate Program, 2026
+
+Project Final dikembangkan dari project ESP32/ThingsBoard sebelumnya dan kemudian diperluas secara signifikan dengan:
+
+- Smart Home Fire Safety
+- Edge Computing
+- Telegram integration
+- ThingsBoard telemetry and RPC
+- Persistent NVS Event Buffer
+- Safety Interlock
+- Adaptive Intelligence / Dynamic Threshold
+- Advanced Analytics
+- Token-Based Authentication
+- Temporary Security Lock
+- Security Telemetry
+
+### Original Project Attribution
+
+Project ini dikembangkan dari contoh/project ESP32 ThingsBoard yang sebelumnya mencantumkan:
+
+**Author: Mirutec - Roger Chung**
+
+Attribution terhadap original author tetap dipertahankan. License asli pada repository, apabila ada, tetap harus dipertahankan sesuai ketentuannya.
+
+---
+
+## Final Project Scope
+
+Project ini adalah **academic prototype / simulation**.
+
+Sistem tidak dimaksudkan sebagai pengganti commercial certified fire alarm atau safety system.
